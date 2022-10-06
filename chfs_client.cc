@@ -69,10 +69,12 @@ chfs_client::isdir(inum inum)
     // return ! isfile(inum);
 
     extent_protocol::attr a;
+
 	if (ec->getattr(inum, a) != extent_protocol::OK) {
         printf("error getting attr\n");
         return false;
     }
+
     if (a.type == extent_protocol::T_DIR) {
         printf("isdir: %lld is a dir\n", inum);
         return true;
@@ -82,15 +84,20 @@ chfs_client::isdir(inum inum)
 }
 
 bool
-chfs_client::issymlink(inum inum) {
+chfs_client::issymlink(inum inum)
+{
     extent_protocol::attr a;
+
     if (ec->getattr(inum, a) != extent_protocol::OK) {
         printf("error getting attr\n");
         return false;
     }
+
     if (a.type == extent_protocol::T_SYMLINK) {
+        printf("issymlink: %lld is a symlink\n", inum);
         return true;
     }
+    printf("issymlink: %lld is not a symlink\n", inum);
     return false;
 }
 
@@ -430,40 +437,30 @@ release:
 }
 
 int
-chfs_client::symlink(inum parent, const char *name, const char *link, inum &ino_out) {
+chfs_client::symlink(inum parent, const char *name, const char *link, inum &ino_out)
+{
     int r = OK;
     bool found;
     inum id;
-    dir_content ent;
+    dir_content *ent = new dir_content();
     std::string buf;
 
-    if(ec->get(parent, buf) != extent_protocol::OK){
-        r = IOERR;
-        goto release;
+    EXT_RPC(ec->get(parent, buf));
+    EXT_RPC(lookup(parent, name, found, id));
+    if (found) {
+        return EXIST;
     }
-    if(lookup(parent, name, found, id) != extent_protocol::OK && found){
-        r = EXIST;
-        goto release;
-    }
+    EXT_RPC(ec->create(extent_protocol::T_SYMLINK, ino_out));
+    EXT_RPC(ec->put(ino_out, std::string(link)));
 
-    if(ec->create(extent_protocol::T_SYMLINK, ino_out) != extent_protocol::OK){
-        r = IOERR;
-        goto release;
-    }
-    if(ec->put(ino_out, std::string(link)) != extent_protocol::OK){
-        r = IOERR;
-        goto release;
-    }
+    ent->inum = ino_out;
+    ent->len = strlen(name);
+    memcpy(ent->name, name, ent->len);
+    buf.append((char *)ent, sizeof(dir_content));
 
-    ent.inum = ino_out;
-    ent.len = strlen(name);
-    memcpy(ent.name, name, ent.len);
-    buf.append((char *) (&ent), sizeof(dir_content));
+    EXT_RPC(ec->put(parent, buf));
+    delete ent;
 
-    if(ec->put(parent, buf) != extent_protocol::OK){
-        r = IOERR;
-        goto release;
-    }
 release:
     return r;
 }
