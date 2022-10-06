@@ -68,29 +68,8 @@ block_manager::alloc_block()
       return i;
     }
   }
-  // char *buf = (char *)malloc(BLOCK_SIZE);
-  // int bitmap_block_number = (BLOCK_NUM / BPB);
-
-  // // scan bitmap
-  // for (int i = 0; i < bitmap_block_number; i++) {
-  //   d->read_block(i+2, buf);
-  //   for (int j = 0; j < BLOCK_SIZE; j++) {
-  //     if (buf[j] != -1) {
-  //       int b = buf[j];
-  //       int offset = 7;
-  //       for (; (b >> offset)&1; offset--) {}
-  //       b |= (1 << offset);
-  //       buf[j] = b;
-  //       d->write_block(i+2, buf);
-  //       int block_id = i * BPB + j * 8 + (7 - offset);
-  //       free(buf);
-  //       return block_id;
-  //     }
-  //   }
-  // }
 
   printf("\tbm: error! alloc block error\n");
-  // free(buf);
   return 0;
 }
 
@@ -105,20 +84,6 @@ block_manager::free_block(uint32_t id)
 
   using_blocks[id] = 0;
 
-  // char *buf = (char *)malloc(BLOCK_SIZE);
-  // const int bitmap_block = id / BPB;
-  // d->read_block(bitmap_block+2, buf);
-
-  // const int block_offset = id % BPB;
-  // int byte_value = buf[block_offset/8];
-  // const int byte_offset = block_offset % 8;
-
-  // byte_value &= ~(1 << (7 - byte_offset));
-
-  // buf[block_offset/8] = byte_value;
-  // d->write_block(bitmap_block+2, buf);
-  // free(buf);
-
   return;
 }
 
@@ -132,27 +97,6 @@ block_manager::block_manager()
   sb.size = BLOCK_SIZE * BLOCK_NUM;
   sb.nblocks = BLOCK_NUM;
   sb.ninodes = INODE_NUM;
-
-  // int bits = IBLOCK(INODE_NUM, BLOCK_NUM) + 1;
-  // for(int i = 0; i < bits / BPB; ++i) {
-  //   char *buf = (char *)malloc(BLOCK_SIZE);
-  //   memset(buf, -1, BLOCK_SIZE);
-  //   d->write_block(2 + i, buf);
-  //   free(buf);
-  // }
-  // int rest = bits % BPB;
-  // if(bits % BPB > 0) {
-  //   char *buf = (char *)malloc(BLOCK_SIZE);
-  //   memset(buf, -1, rest / 8);
-  //   char tmp = 0;
-  //   for(int j = 0; j < rest % 8; ++j) {
-  //     tmp |= 1 << (7 - j);
-  //   }
-  //   buf[rest / 8] = tmp;
-  //   d->write_block(2 + bits / BPB, buf);
-  //   free(buf);
-  // }
-
 }
 
 void
@@ -167,7 +111,7 @@ block_manager::write_block(uint32_t id, const char *buf)
   d->write_block(id, buf);
 }
 
-// inode layer -----------------------------------------
+// TODO: inode layer -----------------------------------------
 
 inode_manager::inode_manager()
 {
