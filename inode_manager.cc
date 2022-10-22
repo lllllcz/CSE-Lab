@@ -138,23 +138,12 @@ inode_manager::alloc_inode(uint32_t type)
   char *buf = (char *)malloc(BLOCK_SIZE);
   inode_t * new_inode =(inode_t *) buf;
 
-  if (type == extent_protocol::T_DIR) {
-    inode_block = IBLOCK(1, BLOCK_NUM);
-    bzero(new_inode, sizeof(inode_t));
-    new_inode->type = type;
-    new_inode->atime = time(NULL);
-    new_inode->mtime = time(NULL);
-    new_inode->ctime = time(NULL);
-    bm->write_block(inode_block, buf);
-    free(buf);
-    return 1;
-  }
-
-  int i = 2;
+  int i = 1;
   for (; i < INODE_NUM; i++) {
     inode_block = IBLOCK(i, BLOCK_NUM);
     bm->read_block(inode_block, buf);
     if (new_inode->type == 0) {
+      if (i == 1 && type == extent_protocol::T_FILE) {break;}
       bzero(new_inode, sizeof(inode_t));
       new_inode->type = type;
       new_inode->atime = time(NULL);
