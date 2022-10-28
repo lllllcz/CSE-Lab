@@ -20,24 +20,56 @@
  * 3. each chfs_commands contains transaction ID, command type, and other information.
  * 4. you can treat a chfs_command as a log entry.
  */
+typedef unsigned long long txid_t;
+enum cmd_type {
+    CMD_BEGIN = 0,
+    CMD_COMMIT,
+    CMD_CREATE,
+    CMD_PUT,
+    CMD_REMOVE
+};
+struct fix_entry {
+    uint64_t old_size;
+    uint64_t new_size;
+    int t;
+    txid_t tx_id;
+    extent_protocol::extentid_t inode_num;
+};
+
 class chfs_command {
 public:
-    typedef unsigned long long txid_t;
-    enum cmd_type {
-        CMD_BEGIN = 0,
-        CMD_COMMIT
-
-    };
 
     cmd_type type = CMD_BEGIN;
     txid_t id = 0;
+    extent_protocol::extentid_t inum = 0;
+    std::string old_value = "";
+    std::string new_value = "";
 
     // constructor
     chfs_command() {}
+    chfs_command(cmd_type t, txid_t i, txid_t in, std::string o, std::string n)
+        :type(t), id(i), inum(in), old_value(o), new_value(n) {}
 
     uint64_t size() const {
-        uint64_t s = sizeof(cmd_type) + sizeof(txid_t);
+        uint64_t s = sizeof(cmd_type) + sizeof(txid_t) + sizeof(extent_protocol::extentid_t) +
+                old_value.size() + new_value.size();
         return s;
+    }
+
+    std::string strToPrint() const {
+        std::string res;
+        switch (type) {
+            case CMD_BEGIN: res = "begin";break;
+            case CMD_COMMIT: res = "commit";break;
+            case CMD_CREATE: res = "create";break;
+            case CMD_PUT: res = "put";break;
+            case CMD_REMOVE: res = "remove";break;
+            default:
+                break;
+        }
+        res = res + "\t" + std::to_string(id) + ' ' + std::to_string(inum) + '\t' +
+                old_value + '\t' + new_value + '\n';
+        return res;
     }
 };
 
@@ -59,13 +91,15 @@ public:
 
     // persist data into solid binary file
     // You may modify parameters in these functions
-    void append_log(const command& log);
+    void append_log(const chfs_command& log);
     void checkpoint();
 
     // restore data from solid binary file
     // You may modify parameters in these functions
     void restore_logdata();
     void restore_checkpoint();
+    // restored log data
+    std::vector<command> log_entries;
 
 private:
     std::mutex mtx;
@@ -73,8 +107,6 @@ private:
     std::string file_path_checkpoint;
     std::string file_path_logfile;
 
-    // restored log data
-    std::vector<command> log_entries;
 };
 
 template<typename command>
@@ -92,8 +124,33 @@ persister<command>::~persister() {
 }
 
 template<typename command>
-void persister<command>::append_log(const command& log) {
+void persister<command>::append_log(const chfs_command& log) {
     // Your code here for lab2A
+    mtx.lock();
+	std::lock_guard<std::mutex> lck(mtx, std::adopt_lock);
+
+    std::ofstream log_file(file_path_logfile, std::ios::out | std::ios::app | std::ios::binary);
+
+    char * entry_buf = (char *)malloc(sizeof(fix_entry));
+    fix_entry *entry = (fix_entry *)entry_buf;
+    entry->old_size = log.old_value.size();
+    entry->new_size = log.new_value.size();
+    entry->t = log.type;
+    entry->tx_id = log.id;
+    entry->inode_num = log.inum;
+
+    log_file.write(entry_buf, sizeof(fix_entry));
+    if (entry->old_size > 0) {
+        log_file.write(log.old_value.data(), entry->old_size);
+    }
+    if (entry->new_size > 0) {
+        std::string buf = log.new_value;
+        log_file.write(buf.data(), buf.length());
+    }
+    
+    free(entry_buf);
+    log_file.close();
+    // fclose(log_file);
 
 }
 
@@ -106,6 +163,51 @@ void persister<command>::checkpoint() {
 template<typename command>
 void persister<command>::restore_logdata() {
     // Your code here for lab2A
+    mtx.lock();
+	std::lock_guard<std::mutex> lck(mtx, std::adopt_lock);
+
+    std::ifstream log_file(file_path_logfile, std::ios::in | std::ios::binary);
+    log_entries.clear();
+    if (!log_file.is_open()) {return;}
+
+    while (!log_file.eof()) {
+        char * entry_buf = (char *)malloc(sizeof(fix_entry));
+        fix_entry *entry = (fix_entry *)entry_buf;
+        log_file.read(entry_buf, sizeof(fix_entry));
+        if (log_file.eof()) {free(entry_buf);break;}
+
+        char * old_buf = nullptr;
+        if (entry->old_size > 0) {
+            old_buf = new char[entry->old_size+1];
+            log_file.read((char *)old_buf, entry->old_size);
+            old_buf[entry->old_size] = '\0';
+        }
+        char * new_buf = nullptr;
+        if (entry->new_size > 0) {
+            new_buf = new char[entry->new_size+1];
+            log_file.read((char *)new_buf, entry->new_size);
+            new_buf[entry->new_size] = '\0';
+        }
+
+        std::string oldval = "", newval = "";
+        if (entry->old_size > 0) {
+            for (uint64_t i = 0; i < entry->old_size; i++) {
+                oldval.append(1, old_buf[i]);
+            }
+        }
+        if (entry->new_size > 0) {
+            for (uint64_t i = 0; i < entry->new_size; i++) {
+                newval.append(1, new_buf[i]);
+            }
+        }
+        chfs_command cmd((cmd_type) entry->t, entry->tx_id, entry->inode_num, oldval, newval);
+        log_entries.push_back(cmd);
+
+        free(entry_buf);
+        if (old_buf) delete[] old_buf;
+        if (new_buf) delete[] new_buf;
+    }
+    log_file.close();
 
 };
 

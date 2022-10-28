@@ -33,7 +33,7 @@ class chfs_client {
   };
   struct dir_content {
     chfs_client::inum inum;
-    char name[255];
+    char name[128];
     size_t len;
   };
 

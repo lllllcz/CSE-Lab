@@ -209,9 +209,10 @@ chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
     memcpy(entry->name, name, entry->len);
     entry->inum = ino_out;
     buf.append((char *)entry, sizeof(dir_content));
-
+    // printf("cc: put root size %lu\n", buf.size());
     EXT_RPC(ec->put(parent, buf));
     delete entry;
+    // printf("cc: create %lld %s\n", ino_out, name);
 
 release:
     return r;
@@ -329,6 +330,7 @@ chfs_client::readdir(inum dir, std::list<dirent> &list)
             struct dirent entry;
             entry.inum = content.inum;
             entry.name.assign(content.name, content.len);
+            // printf("---name: %s\n", entry.name.c_str());
             list.push_back(entry);
         }
     }
@@ -352,7 +354,7 @@ chfs_client::read(inum ino, size_t size, off_t off, std::string &data)
     EXT_RPC(ec->get(ino, buf));
     
     {
-        off_t t = (off_t)buf.size() - off;
+        size_t t = buf.size() - off;
         if(t > 0) {
             data = buf.substr(off, (size < t) ? size : t);
         }

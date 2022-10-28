@@ -17,20 +17,60 @@ extent_server::extent_server()
   _persister = new chfs_persister("log"); // DO NOT change the dir name here
 
   // Your code here for Lab2A: recover data on startup
+  _persister->restore_logdata();
+  if (_persister->log_entries.empty()) {
+    return;
+  }
+  int entries_size = _persister->log_entries.size();
+  for (int i = 0; i < entries_size; i++) 
+  {
+    chfs_command cmd = _persister->log_entries.at(i);
+
+    extent_protocol::extentid_t id = cmd.inum & 0x7fffffff;
+    const char * cbuf = nullptr;
+    int size, type_record;
+
+    switch (cmd.type)
+    {
+    case CMD_CREATE:
+      type_record = atoi(cmd.new_value.c_str());
+      im->realloc_inode(id, type_record);
+      break;
+    case CMD_PUT:
+      cbuf = cmd.new_value.c_str();
+      size = cmd.new_value.size();
+      im->write_file(id, cbuf, size);
+      break;
+    case CMD_REMOVE:
+      im->remove_file(id);
+      break;
+    default:
+      break;
+    }
+  }
 }
 
 int extent_server::create(uint32_t type, extent_protocol::extentid_t &id)
 {
   // alloc a new inode and return inum
-  printf("extent_server: create inode\n");
+  printf("\textent_server: create inode\n");
   id = im->alloc_inode(type);
+
+  chfs_command cmd(CMD_CREATE, 0, id, "", std::to_string(type));
+  _persister->append_log(cmd);
 
   return extent_protocol::OK;
 }
 
 int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 {
+  std::string old;
+  get(id, old);
+
   id &= 0x7fffffff;
+  
+  chfs_command cmd(CMD_PUT, 0, id, old, buf);
+  _persister->append_log(cmd);
   
   const char * cbuf = buf.c_str();
   int size = buf.size();
@@ -41,7 +81,7 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 
 int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 {
-  printf("extent_server: get %lld\n", id);
+  printf("\textent_server: get %lld\n", id);
 
   id &= 0x7fffffff;
 
@@ -61,7 +101,7 @@ int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 
 int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr &a)
 {
-  printf("extent_server: getattr %lld\n", id);
+  printf("\textent_server: getattr %lld\n", id);
 
   id &= 0x7fffffff;
   
@@ -75,9 +115,16 @@ int extent_server::getattr(extent_protocol::extentid_t id, extent_protocol::attr
 
 int extent_server::remove(extent_protocol::extentid_t id, int &)
 {
-  printf("extent_server: write %lld\n", id);
+  printf("\textent_server: write %lld\n", id);
 
+  std::string old;
+  get(id, old);
+  
   id &= 0x7fffffff;
+
+  chfs_command cmd(CMD_REMOVE, 0, id, old, "");
+  _persister->append_log(cmd);
+
   im->remove_file(id);
  
   return extent_protocol::OK;

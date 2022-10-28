@@ -20,11 +20,11 @@ disk::read_block(blockid_t id, char *buf)
   // Part_1_A
 
   if (id < 0 || id >= BLOCK_NUM) {
-    printf("\t\tdisk: error! wrong block id\n");
+    printf("\t\t\tdisk: error! wrong block id\n");
     return;
   }
   if (buf == NULL) {
-    printf("\t\tdisk: error! empty pointer \"buf\"\n");
+    printf("\t\t\tdisk: error! empty pointer \"buf\"\n");
     return;
   }
 
@@ -37,11 +37,11 @@ disk::write_block(blockid_t id, const char *buf)
   // Part_1_A
 
   if (id < 0 || id >= BLOCK_NUM) {
-    printf("\t\tdisk: error! wrong block id\n");
+    printf("\t\t\tdisk: error! wrong block id\n");
     return;
   }
   if (buf == NULL) {
-    printf("\t\tdisk: error! empty pointer \"buf\"\n");
+    printf("\t\t\tdisk: error! empty pointer \"buf\"\n");
     return;
   }
 
@@ -69,7 +69,7 @@ block_manager::alloc_block()
     }
   }
 
-  printf("\tbm: error! alloc block error\n");
+  printf("\t\tbm: error! alloc block error\n");
   return 0;
 }
 
@@ -111,7 +111,7 @@ block_manager::write_block(uint32_t id, const char *buf)
   d->write_block(id, buf);
 }
 
-// TODO: inode layer -----------------------------------------
+// inode layer -----------------------------------------
 
 inode_manager::inode_manager()
 {
@@ -154,9 +154,28 @@ inode_manager::alloc_inode(uint32_t type)
       return i;
     }
   }
-  printf("\tim: error! alloc inode error\n");
+  printf("\t\tim: error! alloc inode error\n");
   free(buf);
   return 0;
+}
+
+void
+inode_manager::realloc_inode(uint32_t inum, uint32_t type)
+{
+  int inode_block = -1;
+  char *buf = (char *)malloc(BLOCK_SIZE);
+  inode_t * new_inode =(inode_t *) buf;
+  // printf("im:redo-create %d\n", inum);
+  
+  inode_block = IBLOCK(inum, BLOCK_NUM);
+  bzero(new_inode, sizeof(inode_t));
+  new_inode->type = type;
+  new_inode->atime = time(NULL);
+  new_inode->mtime = time(NULL);
+  new_inode->ctime = time(NULL);
+  bm->write_block(inode_block, buf);
+  free(buf);
+  return ;
 }
 
 void
@@ -196,7 +215,7 @@ inode_manager::get_inode(uint32_t inum)
   bm->read_block(inode_block, buf);
   ino = (inode_t *) buf;
   if (ino->type == 0) {
-    printf("\tim: error! no such inode\n");
+    printf("\t\tim: error! no such inode\n");
     free(buf);
     return NULL;
   }
@@ -255,7 +274,7 @@ inode_manager::read_file(uint32_t inum, char **buf_out, int *size)
     }
     free(indirect_block);
   } else {
-    printf("\tim: error! file is too large to read\n");
+    printf("\t\tim: error! file is too large to read\n");
   }
 
   *buf_out = buf;
@@ -274,7 +293,7 @@ inode_manager::write_file(uint32_t inum, const char *buf, int size)
    * is larger or smaller than the size of original inode
    */
   // Part_1_B
-
+  // if (inum == 1) {printf("\t\tim: write root (content size: %d)\n", size);}
   inode_t * file_inode = get_inode(inum);
   if (file_inode == NULL) {return;}
   long unsigned int old_block_count = (file_inode->size + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -360,7 +379,7 @@ inode_manager::write_file(uint32_t inum, const char *buf, int size)
     }
     free(indirect_block);
   } else {
-    printf("\tim: error! file is too large to write\n");
+    printf("\t\tim: error! file is too large to write\n");
   }
 
   file_inode->atime = time(NULL);
