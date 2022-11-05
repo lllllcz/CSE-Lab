@@ -34,12 +34,13 @@ class chfs_client {
   struct dir_content {
     chfs_client::inum inum;
     char name[128];
-    size_t len;
+    uint32_t len;
   };
 
  private:
   static std::string filename(inum);
   static inum n2i(std::string);
+  txid_t tx_id = 0;
 
  public:
   chfs_client();

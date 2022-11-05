@@ -172,10 +172,15 @@ chfs_client::setattr(inum ino, size_t size)
      * according to the size (<, =, or >) content length.
      */
     // 2-b
+    tx_id += 1;
+    ec->begin_tx(tx_id);
+
     std::string buf;
     EXT_RPC(ec->get(ino, buf));
     buf.resize(size);
     EXT_RPC(ec->put(ino, buf));
+
+    ec->commit_tx(tx_id);
 
 release:
     return r;
@@ -202,6 +207,10 @@ chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
         printf("found\n");
         return IOERR;
     }
+
+    tx_id += 1;
+    ec->begin_tx(tx_id);
+
     EXT_RPC(ec->create(extent_protocol::T_FILE, ino_out));
     EXT_RPC(ec->get(parent, buf));
 
@@ -209,10 +218,11 @@ chfs_client::create(inum parent, const char *name, mode_t mode, inum &ino_out)
     memcpy(entry->name, name, entry->len);
     entry->inum = ino_out;
     buf.append((char *)entry, sizeof(dir_content));
-    // printf("cc: put root size %lu\n", buf.size());
+    
     EXT_RPC(ec->put(parent, buf));
+    ec->commit_tx(tx_id);
+    
     delete entry;
-    // printf("cc: create %lld %s\n", ino_out, name);
 
 release:
     return r;
@@ -243,6 +253,10 @@ chfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &ino_out)
         return IOERR;
     }
     EXT_RPC(ec->get(parent, buf));
+
+    tx_id += 1;
+    ec->begin_tx(tx_id);
+    
     EXT_RPC(ec->create(extent_protocol::T_DIR, ino_out));
 
     entry->len = strlen(name);
@@ -251,6 +265,8 @@ chfs_client::mkdir(inum parent, const char *name, mode_t mode, inum &ino_out)
     buf.append((char *)entry, sizeof(dir_content));
 
     EXT_RPC(ec->put(parent, buf));
+    ec->commit_tx(tx_id);
+
     delete entry;
 
 release:
@@ -330,7 +346,7 @@ chfs_client::readdir(inum dir, std::list<dirent> &list)
             struct dirent entry;
             entry.inum = content.inum;
             entry.name.assign(content.name, content.len);
-            // printf("---name: %s\n", entry.name.c_str());
+            
             list.push_back(entry);
         }
     }
@@ -391,8 +407,12 @@ chfs_client::write(inum ino, size_t size, off_t off, const char *data,
 	buf.resize(off, '\0');
     buf.append(new_data);
 	buf.append(tail);
+    
+    tx_id += 1;
+    ec->begin_tx(tx_id);
 
     EXT_RPC(ec->put(ino, buf));
+    ec->commit_tx(tx_id);
 	bytes_written = size;
 
 release:
@@ -420,6 +440,10 @@ int chfs_client::unlink(inum parent,const char *name)
         printf("empty\n");
         return NOENT;
     }
+    
+    tx_id += 1;
+    ec->begin_tx(tx_id);
+
     EXT_RPC(ec->remove(id));
     EXT_RPC(readdir(parent, entries));
 
@@ -436,6 +460,7 @@ int chfs_client::unlink(inum parent,const char *name)
     }
 
     EXT_RPC(ec->put(parent, buf));
+    ec->commit_tx(tx_id);
 
 release:
     return r;
@@ -465,6 +490,10 @@ chfs_client::symlink(inum parent, const char *name, const char *link, inum &ino_
     if (found) {
         return EXIST;
     }
+    
+    tx_id += 1;
+    ec->begin_tx(tx_id);
+
     EXT_RPC(ec->create(extent_protocol::T_SYMLINK, ino_out));
     EXT_RPC(ec->put(ino_out, std::string(link)));
 
@@ -474,6 +503,8 @@ chfs_client::symlink(inum parent, const char *name, const char *link, inum &ino_
     buf.append((char *)ent, sizeof(dir_content));
 
     EXT_RPC(ec->put(parent, buf));
+    ec->commit_tx(tx_id);
+
     delete ent;
 
 release:

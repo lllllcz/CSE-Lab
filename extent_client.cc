@@ -55,4 +55,19 @@ extent_client::remove(extent_protocol::extentid_t eid)
   return ret;
 }
 
+extent_protocol::status 
+extent_client::begin_tx(txid_t tx_id)
+{
+  extent_protocol::status ret = extent_protocol::OK;
+  ret = es->begin_tx(tx_id);
+  return ret;
+}
+
+extent_protocol::status 
+extent_client::commit_tx(txid_t tx_id)
+{
+  extent_protocol::status ret = extent_protocol::OK;
+  ret = es->commit_tx(tx_id);
+  return ret;
+}
 
