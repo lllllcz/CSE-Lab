@@ -6,6 +6,7 @@
 #include "lock_client.h"
 #include "extent_client.h"
 #include <vector>
+#include <list>
 
 
 class chfs_client {
@@ -32,10 +33,16 @@ class chfs_client {
     std::string name;
     chfs_client::inum inum;
   };
+  struct dir_content {
+    chfs_client::inum inum;
+    char name[128];
+    uint32_t len;
+  };
 
  private:
   static std::string filename(inum);
   static inum n2i(std::string);
+  txid_t tx_id = 0;
 
  public:
   chfs_client(std::string, std::string);
@@ -56,6 +63,9 @@ class chfs_client {
   int mkdir(inum , const char *, mode_t , inum &);
   
   /** you may need to add symbolic link related methods here.*/
+  bool issymlink(inum);
+  int readlink(inum ino, std::string &buf);
+  int symlink(inum parent, const char *name, const char *link, inum &ino_out);
 };
 
 #endif 
