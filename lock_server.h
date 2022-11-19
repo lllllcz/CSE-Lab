@@ -9,10 +9,16 @@
 #include "lock_client.h"
 #include "rpc.h"
 
+#include <map>
+#include <pthread.h>
+
 class lock_server {
 
  protected:
   int nacquire;
+  pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+  std::map<lock_protocol::lockid_t, pthread_cond_t> lock_manager;
+  std::map<lock_protocol::lockid_t, bool> lock_recorder;
 
  public:
   lock_server();

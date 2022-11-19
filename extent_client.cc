@@ -22,6 +22,8 @@ extent_client::create(uint32_t type, extent_protocol::extentid_t &id)
 {
   extent_protocol::status ret = extent_protocol::OK;
   // Your lab2B part1 code goes here
+  ret = cl->call(extent_protocol::create, type, id);
+  VERIFY(ret == extent_protocol::OK);
   return ret;
 }
 
@@ -30,6 +32,8 @@ extent_client::get(extent_protocol::extentid_t eid, std::string &buf)
 {
   extent_protocol::status ret = extent_protocol::OK;
   // Your lab2B part1 code goes here
+  ret = cl->call(extent_protocol::get, eid, buf);
+  VERIFY(ret == extent_protocol::OK);
   return ret;
 }
 
@@ -39,6 +43,7 @@ extent_client::getattr(extent_protocol::extentid_t eid,
 {
   extent_protocol::status ret = extent_protocol::OK;
   // Your lab2B part1 code goes here
+  ret = cl->call(extent_protocol::getattr, eid, attr);
   return ret;
 }
 
@@ -47,6 +52,9 @@ extent_client::put(extent_protocol::extentid_t eid, std::string buf)
 {
   extent_protocol::status ret = extent_protocol::OK;
   // Your lab2B part1 code goes here
+  int r;
+  ret = cl->call(extent_protocol::put, eid, buf, r);
+  VERIFY(ret == extent_protocol::OK);
   return ret;
 }
 
@@ -55,6 +63,9 @@ extent_client::remove(extent_protocol::extentid_t eid)
 {
   extent_protocol::status ret = extent_protocol::OK;
   // Your lab2B part1 code goes here
+  int r;
+  ret = cl->call(extent_protocol::remove, eid, r);
+  VERIFY(ret == extent_protocol::OK);
   return ret;
 }
 
@@ -62,7 +73,7 @@ extent_protocol::status
 extent_client::begin_tx(txid_t tx_id)
 {
   extent_protocol::status ret = extent_protocol::OK;
-  ret = es->begin_tx(tx_id);
+  // ret = es->begin_tx(tx_id);
   return ret;
 }
 
@@ -70,7 +81,7 @@ extent_protocol::status
 extent_client::commit_tx(txid_t tx_id)
 {
   extent_protocol::status ret = extent_protocol::OK;
-  ret = es->commit_tx(tx_id);
+  // ret = es->commit_tx(tx_id);
   return ret;
 }
 
