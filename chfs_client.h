@@ -5,6 +5,7 @@
 //#include "chfs_protocol.h"
 #include "extent_client.h"
 #include <vector>
+#include <list>
 
 
 class chfs_client {
@@ -37,6 +38,11 @@ class chfs_client {
     unsigned long mtime;
     unsigned long ctime;
   };
+  struct dir_content {
+    chfs_client::inum inum;
+    char name[255];
+    size_t len;
+  };
 
  private:
   static std::string filename(inum);
@@ -62,7 +68,9 @@ class chfs_client {
   int mkdir(inum , const char *, mode_t , inum &);
   
   /** you may need to add symbolic link related methods here.*/
-
+  bool issymlink(inum);
+  int readlink(inum ino, std::string &buf);
+  int symlink(inum parent, const char *name, const char *link, inum &ino_out);
 };
 
 #endif 
