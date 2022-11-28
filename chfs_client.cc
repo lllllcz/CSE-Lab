@@ -336,7 +336,7 @@ chfs_client::read(inum ino, size_t size, off_t off, std::string &data)
     EXT_RPC(ec->get(ino, buf));
     
     {
-        off_t t = (off_t)buf.size() - off;
+        size_t t = (off_t)buf.size() - off;
         if(t > 0) {
             data = buf.substr(off, (size < t) ? size : t);
         }
