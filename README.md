@@ -126,7 +126,7 @@ public:
 ```
 
 ### `raft_storage`
-The last important class is `raft_storage`, which you will complete to persist the Raft log and metadata. `raft_storage` is also a class template with a template parameter named `command`, which is the same as the template parameter of `raft` class. And you can use the interface provided by `raft_command`, such as `size`, `deserialize` and `serialize` to implement the log persistency.
+The last important class is `raft_storage`, which you will complete to persist the Raft log and persist_metadata. `raft_storage` is also a class template with a template parameter named `command`, which is the same as the template parameter of `raft` class. And you can use the interface provided by `raft_command`, such as `size`, `deserialize` and `serialize` to implement the log persistency.
 
 ```c++
 template<typename command>
@@ -290,7 +290,7 @@ Pass 7/7 tests. wall-time: 34.26s, user-time: 0.54s, sys-time: 2.39s
 ```
 
 Hints:
-* Notice that the first log index is **1** instead of 0. To simplify the programming, you can append an empty log entry to the logs at the very beginning. And since the 'lastApplied' index starts from 0, the first empty log entry will never be applied to the state machine.
+* Notice that the first log index is **1** instead of 0. To simplify the programming, you can append an empty log entry to the logs at the very beginning. And since the 'last_applied' index starts from 0, the first empty log entry will never be applied to the state machine.
 * Do yourself a favor for future labs (especially for lab 3 and lab 4). Make your code clean and readable.
 * Remember to use the mutex!
 * Don't forget to implement the marshall and unmarshall method in `raft_protocol.cc` and `raft_protocol.h` (for the template class).
@@ -301,9 +301,9 @@ Hints:
 In this part, you will persist the states of a Raft node. 
 
 Recommended steps:
-1. You should implement the class `raft_storeage` in `raft_storage.h` to persist the necessary states (e.g. logs). The test case will use the constructor `raft_storage(const std::string &file_dir)` to create a `raft_storage` object. Each raft node will have its own file_dir to persist the states. And after a failure, the node will restore its storage via this dir.
+1. You should implement the class `raft_storeage` in `raft_storage.h` to persist the necessary states (e.g. logs). The test case will use the constructor `raft_storage(const std::string &file_dir)` to create a `raft_storage` object. Each raft node will have its own file_dir to persist the states. And after a failure, the node will restore_all its storage via this dir.
 2. You should use the `raft::storage` to persist the state, whenever they are changed.
-3. And you should use the storage to restore the state when a Raft node is created.
+3. And you should use the storage to restore_all the state when a Raft node is created.
 
 You should pass the 6 test cases of this part. (5 points + 5 points + 5 points + 2 points + 2 points + 1 point)
 
@@ -329,7 +329,7 @@ Hints:
 * The test cases may fail due to the bugs from part 1 and part2.
 * The network failure may cause the RPC library to print some errors, such as `rpcs::dispatch: unknown proc 3434.`. You don't need to worry about these errors since they won't cause your program to crash. 
 * To simplify your implementation, you don't have to consider the crash during the disk I/O. The test case won't crash your program during the I/O. For example, you don't have to make sure the atomicity of the state persists.
-* You can use multiple files to persist different data (e.g. a file for metadata and the other for logs).
+* You can use multiple files to persist different data (e.g. a file for persist_metadata and the other for logs).
 * To persist the command, you can use the `serialize` and `deserialize` interface of the `raft_command`.
 
 ## Part 4 - Snapshot 
@@ -347,7 +347,7 @@ The figure above shows the basic idea of snapshotting in Raft. A server replaces
 (indexes 1 through 5) with a new snapshot, which stores just
 the current state (variables x and y in this example). 
 
-Raft includes a small amount of metadata
+Raft includes a small amount of persist_metadata
 in the snapshot: 
 * last included index: the index of the
 last entry in the log that the snapshot replaces (the last entry the state machine had applied)

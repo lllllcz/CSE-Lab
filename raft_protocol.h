@@ -82,7 +82,6 @@ template <typename command>
 class append_entries_args {
 public:
     // Your code here
-    bool heartbeat;
     int term;
     int leaderId;
     int leaderCommit;
@@ -91,31 +90,16 @@ public:
     std::vector< log_entry<command> > entries;
 
     append_entries_args() {};
-    append_entries_args(
-        bool heartbeat, 
-        int term, 
-        int leaderId, 
-        int prevLogIndex, 
-        int prevLogTerm, 
-        std::vector< log_entry<command> > entries, 
-        int leaderCommit
-        )
-    : 
-    heartbeat(heartbeat), 
-    term(term), 
-    leaderId(leaderId), 
-    prevLogIndex(prevLogIndex), 
-    prevLogTerm(prevLogTerm), 
-    entries(entries), 
-    leaderCommit(leaderCommit) 
-    {};
+     append_entries_args(int term, int leaderId, int leaderCommit)
+    : term(term), leaderId(leaderId), leaderCommit(leaderCommit) {};
+    append_entries_args(int term, int leaderId, int leaderCommit, int prevLogIndex, int prevLogTerm)
+    : term(term), leaderId(leaderId), leaderCommit(leaderCommit), prevLogIndex(prevLogIndex), prevLogTerm(prevLogTerm) {};
 };
 
 template <typename command>
 marshall &operator<<(marshall &m, const append_entries_args<command> &args) {
     // Lab3: Your code here
-    m << args.heartbeat 
-        << args.term 
+    m << args.term 
         << args.leaderId 
         << args.leaderCommit
         << args.prevLogIndex 
@@ -128,8 +112,7 @@ marshall &operator<<(marshall &m, const append_entries_args<command> &args) {
 template <typename command>
 unmarshall &operator>>(unmarshall &u, append_entries_args<command> &args) {
     // Lab3: Your code here
-    u >> args.heartbeat 
-        >> args.term 
+    u >> args.term 
         >> args.leaderId 
         >> args.leaderCommit
         >> args.prevLogIndex 
@@ -155,11 +138,6 @@ unmarshall &operator>>(unmarshall &m, append_entries_reply &reply);
 class install_snapshot_args {
 public:
     // Lab3: Your code here
-    int term;
-    int leaderId;
-    int lastIncludedIndex;
-    int lastIncludedTerm;
-    std::vector<char> snapshot;
 };
 
 marshall &operator<<(marshall &m, const install_snapshot_args &args);
@@ -168,7 +146,6 @@ unmarshall &operator>>(unmarshall &m, install_snapshot_args &args);
 class install_snapshot_reply {
 public:
     // Lab3: Your code here
-    int term;
 };
 
 marshall &operator<<(marshall &m, const install_snapshot_reply &reply);
