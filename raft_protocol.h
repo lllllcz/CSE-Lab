@@ -126,7 +126,7 @@ class append_entries_reply {
 public:
     // Lab3: Your code here
     int term;
-    bool success;
+    bool success = false;
 
     append_entries_reply() {};
     append_entries_reply(int term, bool success) : term(term), success(success) {};
