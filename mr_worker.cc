@@ -33,6 +33,32 @@ vector<KeyVal> Map(const string &filename, const string &content)
 {
 	// Copy your code from mr_sequential.cc here.
 
+    size_t word_begin = 0, i;
+    const size_t content_length = content.size();
+    
+    vector<KeyVal> res;
+    
+    while (word_begin <= content_length) {
+        for (i = word_begin; i < content_length; ++i) {
+            char ch = content.at(i);
+            if (!(ch >= 'a' && ch <= 'z') && !(ch >= 'A' && ch <= 'Z')) {
+                break;
+            }
+        }
+        
+        string str = content.substr(word_begin, i - word_begin);
+        
+        if (!str.empty()) {
+            KeyVal kv;
+            kv.key = str;
+            kv.val = to_string(1);
+            res.push_back(kv);
+        }
+
+        word_begin = i + 1;
+    }
+
+    return res;
 }
 
 //
@@ -44,6 +70,11 @@ string Reduce(const string &key, const vector < string > &values)
 {
     // Copy your code from mr_sequential.cc here.
 
+    int sum = 0;
+    for (string val : values) {
+        sum += atoi(val.c_str());
+    }
+    return to_string(sum);
 }
 
 
@@ -60,6 +91,15 @@ private:
 	void doMap(int index, const vector<string> &filenames);
 	void doReduce(int index);
 	void doSubmit(mr_tasktype taskType, int index);
+
+    int string_hash(const string &str) {
+        unsigned long hash = 0;
+        for (char ch : str) {
+            int chi = (int) ch - 32;
+            hash = hash * 95 + chi;
+        }
+        return hash % REDUCER_COUNT;
+    }
 
 	mutex mtx;
 	int id;
@@ -89,12 +129,86 @@ void Worker::doMap(int index, const vector<string> &filenames)
 {
 	// Lab4: Your code goes here.
 
+    string filename = filenames.at(0);
+    
+    ifstream ifs(filename);
+	if(!ifs.is_open()) return;
+	ifs.seekg(0, ios_base::end);  //先把文件输入流指针定位到文档末尾来获取文档的长度
+	int length = ifs.tellg();
+	ifs.seekg(ios_base::beg);  //再将指针定位到文档开头来进行读取
+	char* buff = new char[length + 1](); //开辟一个buff
+	ifs.read(buff, length + 1);  //将内容读取到buff中
+	string read_content(buff, length + 1); //再将buff赋值给content
+	delete [] buff;
+
+    vector <KeyVal> key_val_vec = Map(filename, read_content);
+
+    vector <string> contents(REDUCER_COUNT);
+    for (const KeyVal &kv : key_val_vec) {
+        int reducerId = string_hash(kv.key);
+        contents[reducerId] += kv.key + ' ' + kv.val + '\n';
+    }
+    string i_file_prefix = basedir + "mr-" + to_string(index) + "-";
+    for (int i = 0; i < REDUCER_COUNT; ++i) {
+        const string &content = contents[i];
+        if (!content.empty()) {
+            ofstream file(i_file_prefix + to_string(i), ios::out);
+            file << content;
+            file.close();
+        }
+    }
+
 }
+
+class KVPair {
+public:
+    string key;
+    int value;
+
+    KVPair(string k, string v) : key(k) {
+        value = atoi(v.c_str());
+    }
+
+    string toString() {
+        return key + ' ' + to_string(value) + '\n';
+    }
+};
 
 void Worker::doReduce(int index)
 {
 	// Lab4: Your code goes here.
 
+	string filepath;
+
+    vector<KVPair> pair_vec;
+
+    for (int i = 0; i < 6; ++i) {
+        filepath = basedir + "mr-" + to_string(i) + '-' + to_string(index);
+        ifstream file(filepath, ios::in);
+        if (!file.is_open())
+            continue;
+
+        string key, value;
+        while (file >> key >> value) {
+            bool flag = false;
+            for (auto &p : pair_vec) {
+                if (p.key == key) {
+                    flag = true;
+                    p.value += atoi(value.c_str());
+                    break;
+                }
+            }
+            if (flag) continue;
+            KVPair new_pair(key, value);
+            pair_vec.push_back(new_pair);
+        }
+        file.close();
+    }
+
+    ofstream out_file(basedir + "mr-out", ios::out | ios::app);
+    for (KVPair p : pair_vec) 
+        out_file << p.toString();
+    out_file.close();
 }
 
 void Worker::doSubmit(mr_tasktype taskType, int index)
@@ -119,6 +233,25 @@ void Worker::doWork()
 		// if mr_tasktype::NONE, meaning currently no work is needed, then sleep
 		//
 
+		mr_protocol::AskTaskResponse res;
+        vector<string> fs;
+        
+        cl->call(mr_protocol::asktask, id, res);
+        
+        switch (res.type) {
+        case MAP:
+            fs.push_back(res.filename);
+            doMap(res.index, fs);
+            doSubmit(MAP, res.index);
+            break;
+        case REDUCE:
+            doReduce(res.index);
+            doSubmit(REDUCE, res.index);
+            break;
+        case NONE:
+            sleep(1);
+            break;
+        }
 	}
 }
 

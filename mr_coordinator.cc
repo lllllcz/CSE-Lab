@@ -49,11 +49,58 @@ private:
 mr_protocol::status Coordinator::askTask(int, mr_protocol::AskTaskResponse &reply) {
 	// Lab4 : Your code goes here.
 
+    bool found = false;
+	Task new_task;
+
+    mtx.lock();
+	
+	vector<Task> *tasks_ptr = nullptr;
+	if (completedMapCount < (long) mapTasks.size())
+		tasks_ptr = &mapTasks;
+	else
+		tasks_ptr = &reduceTasks;
+	
+	for (Task &task: *tasks_ptr) {
+		if (!task.isCompleted && !task.isAssigned) {
+			new_task = task;
+			task.isAssigned = true;
+			found = true;
+			break;
+		}
+	}
+    
+    mtx.unlock();
+
+    if (found) {
+        reply.index = new_task.index;
+        reply.type = (mr_tasktype) new_task.taskType;
+        reply.filename = getFile(reply.index);
+    }
+	
 	return mr_protocol::OK;
 }
 
 mr_protocol::status Coordinator::submitTask(int taskType, int index, bool &success) {
 	// Lab4 : Your code goes here.
+
+	lock_guard<mutex> g(mtx);
+
+    switch (taskType) {
+        case MAP:
+            mapTasks[index].isCompleted = true;
+            mapTasks[index].isAssigned = false;
+            completedMapCount++;
+            break;
+        case REDUCE:
+            reduceTasks[index].isCompleted = true;
+            reduceTasks[index].isAssigned = false;
+            completedReduceCount++;
+            break;
+        default:
+            break;
+    }
+    isFinished = completedMapCount >= (long) mapTasks.size() && completedReduceCount >= (long) reduceTasks.size();
+    success = true;
 
 	return mr_protocol::OK;
 }
@@ -149,6 +196,9 @@ int main(int argc, char *argv[])
 	// Lab4: Your code here.
 	// Hints: Register "askTask" and "submitTask" as RPC handlers here
 	// 
+
+	server.reg(mr_protocol::asktask, &c, &Coordinator::askTask);
+    server.reg(mr_protocol::submittask, &c, &Coordinator::submitTask);
 
 	while(!c.Done()) {
 		sleep(1);

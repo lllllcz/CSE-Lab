@@ -29,6 +29,32 @@ vector<KeyVal> Map(const string &filename, const string &content)
     // Your code goes here
     // Hints: split contents into an array of words.
 
+    size_t word_begin = 0, i;
+    const size_t content_length = content.size();
+    
+    vector<KeyVal> res;
+    
+    while (word_begin <= content_length) {
+        for (i = word_begin; i < content_length; ++i) {
+            char ch = content.at(i);
+            if (!(ch >= 'a' && ch <= 'z') && !(ch >= 'A' && ch <= 'Z')) {
+                break;
+            }
+        }
+        
+        string str = content.substr(word_begin, i - word_begin);
+        
+        if (!str.empty()) {
+            KeyVal kv;
+            kv.key = str;
+            kv.val = to_string(1);
+            res.push_back(kv);
+        }
+
+        word_begin = i + 1;
+    }
+
+    return res;
 }
 
 //
@@ -41,6 +67,11 @@ string Reduce(const string &key, const vector <string> &values)
     // Your code goes here
     // Hints: return the number of occurrences of the word.
 
+    int sum = 0;
+    for (string val : values) {
+        sum += atoi(val.c_str());
+    }
+    return to_string(sum);
 }
 
 int main(int argc, char ** argv)
